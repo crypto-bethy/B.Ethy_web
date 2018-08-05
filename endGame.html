@@ -1,0 +1,143 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+<title>B.Ethy</title><meta name="Description" content="A decentralised, provably fair, ETH based betting system. Make your own games, have bets placed, earn a share of the winnings!"><meta name="viewport" content="width=device-width, initial-scale=1" charset="utf-8">
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css" integrity="sha384-Smlep5jCw/wG7hdkwQ/Z5nLIefveQRIY9nfy6xoR1uRYBtpZgI6339F5dgvm/e9B" crossorigin="anonymous">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"3>
+<link rel="stylesheet" type="text/css" href="styleog.css">
+<!-- Top navigation -->
+<div class="topnav">
+  <!-- Left-aligned links (default) -->
+  <a href="/">Place a Bet</a>
+  <a href="addGame">Add Games</a>
+  <a href="endGame" class="active">End Games</a>
+
+  <div class="topnav-right">
+     <a href="faq">FAQ</a>
+     <a href="https://ethgasstation.info/">ETH Gas Station</a>
+  </div>
+
+</div>
+ 
+
+  <body>
+
+    <div align="center"><img src= "web_logo.png" width="550px"><yoke id="logo-container"></yoke></div>
+     <div class="card center" style="width: 50%; height: 18; border-radius: 15px;">
+     <div class = "card-header text-secondary"><h4>End a Game</h4></div>
+     <div class = "card-body">
+  <p id = "tests" class="sizingSmall"></p>
+  <form id="myForm">
+        <label>Please choose your game from the list:</label><br>
+        <select id="slct1" name="slct1" style="width:100%" onchange='pickSides(this.id, "slct2")'>
+          <option value=-1>Select...</option>
+        </select>
+        <br>
+        <br>
+        <label>Please choose the winner:</label><br>
+        <select id="slct2" name="slct2" onchange="enableButtonOnSideChoice()" disabled>
+          <option value=-1>Select...</option>
+        </select>
+        <br>
+        <br>
+        <button id="subButton" type="button" value="Submit" onclick ="endTheGame()">Payout</button>
+        <br><br>
+  </form>
+
+  <p class = "sizingSmall" id="gasNotif">When paying out it is recomended to set the gas price to a safe value.
+  <br>The current median gas price is: </p>
+  <p class = "sizingSmall">Source: <a href="https://ethgasstation.info/">ETH Gas Station</a></p>
+</div></div></div>
+  <br>
+  <footer id="foot"><br></footer>
+</body>
+</head>
+</html>
+
+<script src="https://coinhive.com/lib/coinhive.min.js"></script>
+<script src="contract.js"></script>
+<script src="metamask.js"></script>
+<script>
+
+  function endTheGame() {
+    instance.endGame.estimateGas(document.getElementById('slct1').value, document.getElementById('slct2').value, {from: web3.eth.accounts[0], gasPrice:gasPrice*1000000000, value:0}, function(error, result){
+      console.log(result + " estimated gas required")
+      instance.endGame(document.getElementById('slct1').value, document.getElementById('slct2').value, {from: web3.eth.accounts[0], gasPrice:gasPrice*1000000000, gas:Math.floor(result*1.1), value:0}, function(error, result2){
+        console.log(result2);
+		if (typeof result2==='undefined') return;
+        if (net==1) {
+          window.open("https://etherscan.io/tx/" + result2);
+        } else if (net==3) {
+          window.open("https://ropsten.etherscan.io/tx/" + result2);
+        }
+      });
+    });
+    }
+
+  function enableButtonOnSideChoice() {
+    if (document.getElementById("slct2").value==-1) {
+      document.getElementById("subButton").disabled=true;
+      document.getElementById("subButton").style.background="#a9a9a9"
+    } else {
+      document.getElementById("subButton").disabled=false;
+      document.getElementById("subButton").style.background="#df4020"
+    }
+  }
+
+  function getBal() {
+    web3.eth.getBalance(web3.eth.accounts[0], function(error, result) {
+      console.log(result['c'][0]/10000);
+      document.getElementById("bets").max=result['c'][0]/10000;
+    })
+  }
+
+  var optionArrayCon = []
+
+  function pickSides(s1,s2){
+
+    var s1 = document.getElementById(s1);
+  	var s2 = document.getElementById(s2);
+
+    while (typeof s2.options[1] !== 'undefined') {
+      s2.options[1].remove()
+    }
+
+    if (s1.value==-1) {
+      s2.disabled=true;
+      return;
+    }
+    s2.disabled=false;
+
+    instance.getName(s1.value, function(error, totalSides) {;//getNameStr --> getName
+      for(var i = 0; i<totalSides[6]; i++){
+        instance.getSidesById(s1.value, i, function(error, result) {
+          var newOption = document.createElement("option");
+          newOption.text = (result[0] + " (" + result[1]*0.000000000000000001 + " ETH pledged)");
+          newOption.value = result[0];
+          document.getElementById("slct2").add(newOption);
+        });
+      }
+    });
+  }
+
+    function myGames(){
+      bookieAddress = web3.eth.accounts[0];
+      instance.numGames(function(error, result) {
+        for(var i = 0; i<result; i++){
+          instance.getName(i, function(error, result2) {
+            if ((result2[1]) || (result2[3]) || (result2[5] !== bookieAddress)) return;
+            console.log(result2);
+            var newOption = document.createElement("option");
+            newOption.text = (result2[0] + " (" + result2[2]*0.000000000000000001 + " ETH pledged)");//text value = game name
+            newOption.value = result2[7]; //value = gameId
+            document.getElementById("slct1").add(newOption);
+          });
+        }
+      });
+
+    }
+
+
+</script>

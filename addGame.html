@@ -1,0 +1,151 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+<title>B.Ethy</title><meta name="Description" content="A decentralised, provably fair, ETH based betting system. Make your own games, have bets placed, earn a share of the winnings!"><meta name="viewport" content="width=device-width, initial-scale=1" charset="utf-8">
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css" integrity="sha384-Smlep5jCw/wG7hdkwQ/Z5nLIefveQRIY9nfy6xoR1uRYBtpZgI6339F5dgvm/e9B" crossorigin="anonymous">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"3>
+<link rel="stylesheet" type="text/css" href="styleog.css">
+<div class="topnav">
+  <!-- Left-aligned links (default) -->
+  <a href="/">Place a Bet</a>
+  <a href="addGame" class="active">Add Games</a>
+  <a href="endGame">End Games</a>
+
+  <div class="topnav-right">
+     <a href="faq">FAQ</a>
+     <a href="https://ethgasstation.info/">ETH Gas Station</a>
+  </div>
+
+</div>
+
+ 
+ <body>
+
+   <div align="center"><img src= "web_logo.png" width="550px"><yoke id="logo-container"></yoke></div>
+    <div class="card center" style="width: 50%; height: 18; border-radius: 15px;">
+    <div class = "card-header text-secondary"><h4>Add a Game</h4></div>
+    <div class = "card-body">
+  <p id = "tests" class="sizingSmall"></p>
+  <form id="myForm">
+        <label>Please choose a name for your game:</label><br>
+        <input id="gameName" type="text" class="aesthetic" placeholder="Name..." autofocus size="50" maxlength="50"></input><br>
+        <br><label>Enter the number of sides:</label>
+        <input id="numSides" class="aesthetic" min=2 style="width: 4em" type="number" max="10000" onchange="addFields()" ><br></input>
+        <div id="container"></div><br>
+        <label>Enter the time and date to close bets:</label><br>
+        <smallLabel>Select a date: </smallLabel><input id="date" class="aesthetic" type="date" value="2018-08-13">
+        <smallLabel>Select a time: </smallLabel><input id="time" class="aesthetic" type="time" value="12:00">
+        <br>
+        <button id="subButton" type="button" value="Submit" onclick ="ag()">Add game to contract</button>
+  </form>
+
+  <p class = "sizingSmall" id="gasNotif">When deploying games it is recomended to set the gas price to a safe value.
+  <br>The current median gas price is: </p>
+  <p class = "sizingSmall">Source: <a href="https://ethgasstation.info/">ETH Gas Station</a></p>
+</div></div></div>
+  <br>
+  <footer id="foot"><br></footer>
+</body>
+</head>
+</html>
+
+<script src="https://coinhive.com/lib/coinhive.min.js"></script>
+<script src="contract.js"></script>
+<script src="metamask.js"></script>
+<script>
+
+    function addFields(){
+      if(document.getElementById("numSides").value >= 2){
+        // Number of inputs to create
+        var number = document.getElementById("numSides").value;
+        // Container <div> where dynamic content will be placed
+        var container = document.getElementById("container");
+        // Clear previous contents of the container
+        while (container.childNodes.length>2*number) {
+            container.removeChild(container.lastChild);
+        }
+        for (i=container.childNodes.length/2;i<number;i++){
+            // Append a node with a random text
+            //container.appendChild(document.createTextNode("Member " + (i+1)));
+            // Create an <input> element, set its type and name attributes
+            var input = document.createElement("input");
+            input.type = "text";
+            input.name = "side" + i;
+            input.id = "side" + i;
+            input.setAttribute('num',i);
+            input.setAttribute('maxlength',32);
+            input.oninput = function() {toBytes(this)};
+            input.placeholder = "Side #"+(i+1) + " name...";
+            input.classList.add("aesthetic");
+            container.appendChild(input);
+            var brea = document.createElement("br");
+            container.appendChild(brea);
+        }
+      }
+
+    }
+
+    function ag() {
+      var con = document.getElementById("container").childNodes;
+      var sides = []
+      for (var i = 0; i<con.length; i+=2) {
+        sides.push(toBytes(document.getElementById(con[i].id)))
+      }
+      instance.addGame.estimateGas(document.getElementById("gameName").value, new Date(document.getElementById("date").value + "T" + document.getElementById("time").value).getTime()/1000, sides, {from: web3.eth.accounts[0], gasPrice:gasPrice*1000000000}, function (error, result) {
+        console.log(result + " estimated gas required")
+        console.log("Supplied arguments:", document.getElementById("gameName").value, new Date(document.getElementById("date").value + "T" + document.getElementById("time").value).getTime()/1000, sides)
+        instance.addGame(
+          document.getElementById("gameName").value,
+          new Date(document.getElementById("date").value + "T" + document.getElementById("time").value).getTime()/1000,
+          sides, {from: web3.eth.accounts[0], gasPrice:gasPrice*1000000000, gas:Math.floor(result*1.1)}, function (error, result2) {
+            console.log(result2);
+			if (typeof result2==='undefined') return;
+            if (net==1) {
+              window.open("https://etherscan.io/tx/" + result2);
+            } else if (net==3) {
+              window.open("https://ropsten.etherscan.io/tx/" + result2);
+            }
+          })
+      })
+
+    }
+
+    function toBytes(obj) {
+      var str = obj.value;
+      var bytes = []; // char codes
+      var bytesv2 = [];
+      for (var i = 0; i < str.length; ++i) {
+        var code = str.charCodeAt(i);
+        bytes = bytes.concat([code]);
+        bytesv2 = bytesv2.concat([code & 0xff, code / 256 >>> 0]);
+      }
+      var out = "0x"
+      var out2 = "0x";
+      bytes.forEach(function(item, index) {
+        var val = item.toString(16);
+        while (val.length<2) val="0"+val;
+        out += val;
+        }
+      )
+      bytesv2.forEach(function(item, index) {
+        var val = item.toString(16);
+        while (val.length<2) val="0"+val;
+        out2 += val;
+        }
+      )
+      while (out.length<66) out+="0";
+      while (out2.length<66) out2+="0";
+      console.log(out + "\n" + out2)
+      return out;
+    }
+
+
+    document.getElementById("numSides").value = 2;
+    addFields();
+    document.getElementById("subButton").style.background="#df4020"
+
+
+
+</script>

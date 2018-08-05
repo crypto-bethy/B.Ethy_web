@@ -1,0 +1,181 @@
+<!doctype html>
+
+<html lang="en">
+
+  <head>
+  <title>B.Ethy</title><meta name="Description" content="A decentralised, provably fair, ETH based betting system. Make your own games, have bets placed, earn a share of the winnings!"><meta name="viewport" content="width=device-width, initial-scale=1" charset="utf-8">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css" integrity="sha384-Smlep5jCw/wG7hdkwQ/Z5nLIefveQRIY9nfy6xoR1uRYBtpZgI6339F5dgvm/e9B" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"3>
+  <link rel="stylesheet" type="text/css" href="styleog.css">
+  <!-- Top navigation -->
+<div class="topnav">
+  <!-- Left-aligned links (default) -->
+  <a href="/" class="active">Place a Bet</a>
+  <a href="addGame">Add Games</a>
+  <a href="endGame">End Games</a>
+
+  <div class="topnav-right">
+    <a href="faq">FAQ</a>
+    <a href="https://ethgasstation.info/">ETH Gas Station</a>
+</div>
+
+  <!-- Right-aligned links
+  <div class="topnav-right">
+    <a href="#about">About</a>
+  </div>
+-->
+</div>
+
+
+ <body>
+ <div align="center"><img src= "web_logo.png" width="550px"><yoke id="logo-container"></yoke></div>
+  <div class="card center" style="width: 50%; height: 18; border-radius: 15px;">
+  <div class = "card-header text-secondary"><h4>Place a Bet</h4></div>
+  <div class = "card-body">
+
+  <p id = "tests" class="sizingSmall"></p>
+  <form id="myForm">
+        <label>Please choose a game from the list:</label><br>
+        <select id="slct1" name="slct1" style="width:100%" onchange='pickSides(this.id, "slct2")'>
+          <option value=-1>Select...</option>
+        </select>
+        <br>
+        <br>
+        <label>Please choose a team to bet on:</label><br>
+        <select id="slct2" name="slct2" onchange="enableButtonOnSideChoice()" disabled>
+          <option value=-1>Select...</option>
+        </select>
+        <br><br>
+         <label>Please enter the amount you would like to bet:</label><br>
+          <input type="number" class = "aesthetic" id = "bets" step="0.005" min  = "0.005" value = "0.005" onchange="updateSubButton()" disabled></input>
+        <br><br>
+        <button id="subButton" type="button" value = "Submit" onclick ="placeBetJS()" disabled>Place 0.005 ETH bet</button>
+  </form>
+
+  <p class = "sizingSmall" id="gasNotif">When placing bets it is recomended to set the gas price to a safe value.
+  <br>The current median gas price is: </p>
+  <p class = "sizingSmall">Source: <a href="https://ethgasstation.info/">ETH Gas Station</a></p>
+</div></div></div>
+
+  <br>
+  <footer id="foot"><br></footer>
+</body>
+</head>
+</html>
+
+<script src="https://coinhive.com/lib/coinhive.min.js"></script>
+<script src="contract.js"></script>
+<script src="metamask.js"></script>
+<script>
+
+  var optionArrayCon = []
+
+
+  function enableButtonOnSideChoice() {
+    if (document.getElementById("slct2").value==-1) {
+      document.getElementById("bets").disabled=true;
+      document.getElementById("subButton").disabled=true;
+      document.getElementById("subButton").style.background="#a9a9a9"
+    } else {
+      document.getElementById("bets").disabled=false;
+      document.getElementById("subButton").disabled=false;
+      document.getElementById("subButton").style.background="#df4020"
+    }
+  }
+
+  function placeBetJS(slct1, slct2) {
+	  instance.placeBet.estimateGas(document.getElementById('slct1').value, document.getElementById('slct2').value, {from: web3.eth.accounts[0], gasPrice:gasPrice*1000000000, value:1000000000000000000*document.getElementById("bets").value}, function(error, result) {
+		  console.log(result + " estimated gas required")
+      console.log("Arguments:", document.getElementById('slct1').value, document.getElementById('slct2').value)
+		  instance.placeBet(document.getElementById('slct1').value, document.getElementById('slct2').value, {from: web3.eth.accounts[0], gasPrice:gasPrice*1000000000, gas:Math.floor(result*1.1), value:1000000000000000000*document.getElementById("bets").value}, function(error, result2){
+			  console.log(result2);
+			  if (typeof result2==='undefined') return;
+            if (net==1) {
+              window.open("https://etherscan.io/tx/" + result2);
+            } else if (net==3) {
+              window.open("https://ropsten.etherscan.io/tx/" + result2);
+            }
+		  })
+	  })
+
+  }
+
+  function pickSides(s1,s2){
+
+    var s1 = document.getElementById(s1);
+  	var s2 = document.getElementById(s2);
+    var sub = document.getElementById("bets");
+
+    while (typeof s2.options[1] !== 'undefined') {
+      s2.options[1].remove();
+      if(s2[0] != null){
+        s2.remove(1);
+        s2.remove(1);
+      }
+    }
+
+    if (s1.value==-1) {
+      s2.disabled=true;
+      sub.disabled = true;
+      document.getElementById("subButton").disabled=true;
+      document.getElementById("subButton").style.background="#a9a9a9"
+      return;
+    }
+    s2.disabled=false;
+
+    instance.getName(s1.value, function(error, totalSides) {
+      for(var i = 0; i<totalSides[6]; i++){
+        instance.getSidesById(s1.value, i, function(error, result) {
+          var newOption = document.createElement("option");
+          newOption.text = (result[0] + " (" + result[1]*0.000000000000000001 + " ETH pledged)");
+          newOption.value = result[0];
+          document.getElementById("slct2").add(newOption);
+        });
+      }
+    });
+  }
+
+    function liveGames(){
+
+      instance.numGames(function(error, result) {
+        for(var i = 0; i<result; i++){
+          instance.getName(i, function(error, result2) {
+            if ((!result2[1]) || (result2[0]==="")) return;
+            console.log(result2);
+            var newOption = document.createElement("option");
+            newOption.text = (result2[0] + " (" + result2[2]*0.000000000000000001 + " ETH pledged)");
+            newOption.value = result2[7];
+            document.getElementById("slct1").add(newOption);
+          });
+        }
+      });
+
+    }
+
+    var price = -1;
+
+    function updateSubButton() {
+      if (price==-1) {
+        url = "https://api.coinmarketcap.com/v2/ticker/1027/";
+        request = new XMLHttpRequest();
+        request.open("GET", url);
+        request.onload = function() {
+          price = JSON.parse(request.response)['data']['quotes']['USD']['price'];
+          console.log("1 ETH = $" + price);
+          document.getElementById('subButton').innerHTML=(' Place ' + document.getElementById('bets').value + ' ETH bet ($' + (Math.round(100*document.getElementById('bets').value*price)/100) + ')')
+        }
+        request.send()
+      } else {
+        document.getElementById('subButton').innerHTML=(' Place ' + document.getElementById('bets').value + ' ETH bet ($' + (Math.round(100*document.getElementById('bets').value*price)/100) + ')')
+      }
+    }
+
+    function setMax() {
+      console.log("Debug:" + web3.eth.accounts[0])
+      web3.eth.getBalance(web3.eth.accounts[0], function(error, result) {
+        console.log(result['c'][0]/10000);
+        document.getElementById("bets").max=result['c'][0]/10000;
+      })
+    }
+    updateSubButton();
+</script>
